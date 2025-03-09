@@ -1,82 +1,85 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { debounce } from "@/utils/debounce"; 
 
 export default function AdvocateTable({ initialAdvocates }) {
   const [filteredAdvocates, setFilteredAdvocates] = useState(initialAdvocates);
+	
+	const debouncedFilter = useMemo(
+    () =>
+      debounce((searchTerm) => {
+        const filtered = initialAdvocates.filter((advocate) => {
+          const fields = [
+            advocate.firstName,
+            advocate.lastName,
+            advocate.city,
+            advocate.degree,
+            ...(advocate.specialties || []),
+            advocate.yearsOfExperience.toString(),
+          ].map((field) => field.toLowerCase());
 
-  const onChange = (e) => {
-    const searchTerm = e.target.value;
+          return fields.some((field) => field.includes(searchTerm));
+        });
 
-    document.getElementById("search-term").innerHTML = searchTerm;
+        setFilteredAdvocates(filtered);
+      }, 300),
+    [initialAdvocates] 
+  );
 
-    console.log("filtering advocates...");
-    const filteredAdvocates = advocates.filter((advocate) => {
-      return (
-        advocate.firstName.includes(searchTerm) ||
-        advocate.lastName.includes(searchTerm) ||
-        advocate.city.includes(searchTerm) ||
-        advocate.degree.includes(searchTerm) ||
-        advocate.specialties.includes(searchTerm) ||
-        advocate.yearsOfExperience.includes(searchTerm)
-      );
-    });
-
-    setFilteredAdvocates(filteredAdvocates);
+	const onChange = (e) => {
+    debouncedFilter(e.target.value.toLowerCase());
   };
 
   const onClick = () => {
-    console.log(advocates);
-    setFilteredAdvocates(advocates);
+    setFilteredAdvocates(initialAdvocates);
   };
 
   return (
     <main style={{ margin: "24px" }}>
-			<h1>Solace Advocates</h1>
-			<br />
-			<br />
-			<div>
-				<p>Search</p>
-				<p>
-						Searching for: <span id="search-term"></span>
-				</p>
-				<input style={{ border: "1px solid black" }} onChange={onChange} />
-				<button onClick={onClick}>Reset Search</button>
-			</div>
-			<br />
-			<br />
-			<table>
-				<thead>
-						<tr>
-						<th>First Name</th>
-						<th>Last Name</th>
-						<th>City</th>
-						<th>Degree</th>
-						<th>Specialties</th>
-						<th>Years of Experience</th>
-						<th>Phone Number</th>
-						</tr>
-				</thead>
-				<tbody>
-					{filteredAdvocates.map((advocate) => {
-						return (
-							<tr>
-								<td>{advocate.firstName}</td>
-								<td>{advocate.lastName}</td>
-								<td>{advocate.city}</td>
-								<td>{advocate.degree}</td>
-								<td>
-								{advocate.specialties.map((s) => (
-										<div>{s}</div>
-								))}
-								</td>
-								<td>{advocate.yearsOfExperience}</td>
-								<td>{advocate.phoneNumber}</td>
-							</tr>
-						);
-				})}   
-				</tbody>
-			</table>
+      <h1>Solace Advocates</h1>
+      <br />
+      <br />
+      <div>
+        <p>Search</p>
+        <input onChange={onChange} style={{ border: "1px solid black" }} />
+        <p>
+          Searching for: <span id="search-term"></span>
+        </p>
+        <button onClick={onClick}>Reset Search</button>
+      </div>
+      <br />
+      <br />
+      <table>
+        <thead>
+          <tr>
+            <th>First Name</th>
+            <th>Last Name</th>
+            <th>City</th>
+            <th>Degree</th>
+            <th>Specialties</th>
+            <th>Years of Experience</th>
+            <th>Phone Number</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredAdvocates.map((advocate) => (
+            <tr key={advocate.id}>
+              <td>{advocate.firstName}</td>
+              <td>{advocate.lastName}</td>
+              <td>{advocate.city}</td>
+              <td>{advocate.degree}</td>
+              	<td>
+                  {advocate.specialties.map((s,i) => (
+                    <div key={`${advocate.id}-${s}-${i}`}>{s}</div>
+                  ))}
+              	</td>
+              <td>{advocate.yearsOfExperience}</td>
+              <td>{advocate.phoneNumber}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </main>
   );
 }
