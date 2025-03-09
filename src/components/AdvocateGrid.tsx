@@ -2,17 +2,15 @@
 
 import { useState, useEffect, useMemo, useTransition, useCallback, useRef } from "react";
 import { X } from "lucide-react";
-
 import { debounce } from "@/utils/debounce";
 import { Advocate } from "@/types/advocate";
-
 import AdvocateCard from "./AdvocateCard";
 
 type AdvocateGridProps = {
   initialAdvocates: Advocate[];
 };
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 5;
 
 const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
   const [filteredAdvocates, setFilteredAdvocates] = useState<Advocate[]>(initialAdvocates);
@@ -23,42 +21,48 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  // Debounced search to improve performance and reduce re-renders
+  // Render first PAGE_SIZE advocates immediately
+  useEffect(() => {
+    setVisibleAdvocates(initialAdvocates.slice(0, PAGE_SIZE));
+  }, [initialAdvocates]);
+
+  // Debounced search that filters in the background
   const debouncedFilter = useMemo(
     () =>
       debounce((searchValue: string) => {
         const lowerSearch = searchValue.trim().toLowerCase();
-        setIsSearching(!!lowerSearch); // Disable lazy loading during search
+        setIsSearching(!!lowerSearch);
 
-        const filtered = initialAdvocates.filter((advocate) => {
-          const fields = [
-            advocate.firstName,
-            advocate.lastName,
-            advocate.city,
-            advocate.degree,
-            ...(advocate.specialties || []),
-            advocate.yearsOfExperience.toString(),
-          ].map((field) => field.toLowerCase());
+        startTransition(() => {
+          const filtered = initialAdvocates.filter((advocate) => {
+            const fields = [
+              advocate.firstName,
+              advocate.lastName,
+              advocate.city,
+              advocate.degree,
+              ...(advocate.specialties || []),
+              advocate.yearsOfExperience.toString(),
+            ].map((field) => field.toLowerCase());
 
-          return fields.some((field) => field.includes(lowerSearch));
+            return fields.some((field) => field.includes(lowerSearch));
+          });
+
+          setFilteredAdvocates(filtered);
+          setVisibleAdvocates(lowerSearch ? filtered : filtered.slice(0, PAGE_SIZE)); // ✅ Replace visible results once filtering is done
         });
-
-        setFilteredAdvocates(filtered);
-        setVisibleAdvocates(lowerSearch ? filtered : filtered.slice(0, PAGE_SIZE));
       }, 300),
     [initialAdvocates]
   );
 
-  // Loads more advocates when scrolling, unless a search is active
+  // Loads more advocates when scrolling
   const loadMore = useCallback(() => {
-    if (isSearching) return;
     setVisibleAdvocates((prev) => [
       ...prev,
       ...filteredAdvocates.slice(prev.length, prev.length + PAGE_SIZE),
     ]);
-  }, [filteredAdvocates, isSearching]);
+  }, [filteredAdvocates]);
 
-  // Uses IntersectionObserver to detect when user reaches the bottom of the list
+  // Lazy load more items when scrolling
   useEffect(() => {
     if (!loadMoreRef.current || isSearching) return;
 
@@ -68,7 +72,7 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
           loadMore();
         }
       },
-      { rootMargin: "100px" } // Trigger loading slightly before reaching the bottom
+      { rootMargin: "100px" }
     );
 
     observerRef.current.observe(loadMoreRef.current);
@@ -76,7 +80,7 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
     return () => observerRef.current?.disconnect();
   }, [loadMore, isSearching]);
 
-  // Resets search input and restores initial advocate list
+  // Reset search
   const handleResetClick = useCallback(() => {
     setSearchTerm("");
     setIsSearching(false);
@@ -84,11 +88,12 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
     setVisibleAdvocates(initialAdvocates.slice(0, PAGE_SIZE));
   }, [initialAdvocates]);
 
+  // Handle input changes
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
   };
 
-  // Clears search when Escape key is pressed
+  // Escape key clears search
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Escape") {
@@ -115,7 +120,7 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
           value={searchTerm}
           onChange={handleSearchChange}
           onKeyDown={handleKeyDown}
-          placeholder="Search advocates..."
+          placeholder="Search by name, city, specialty, or degree..."
           className={styles.searchInput}
         />
 
@@ -144,7 +149,6 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
   );
 };
 
-// ✅ Styles stored before export
 const styles = {
   main: "container mx-auto px-4 py-8",
   title: "text-3xl font-semibold text-center text-gray-800 mb-6",
