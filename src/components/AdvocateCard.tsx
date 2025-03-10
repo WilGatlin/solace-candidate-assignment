@@ -1,21 +1,33 @@
-import { memo, useState } from "react";
+import { memo, useState, useMemo, useCallback } from "react";
 import { UserCircle, Phone, MapPin, ChevronDown, ChevronUp } from "lucide-react";
-import clsx from "clsx"; 
+import clsx from "clsx";
 
-import { Advocate, Specialties } from "@/types/advocate";
+import { Advocate } from "@/types/advocate";
 
 type AdvocateCardProps = {
   advocate: Advocate;
-  searchTerm: string 
+  searchTerm: string;
 };
 
 const AdvocateCard: React.FC<AdvocateCardProps> = memo(({ advocate, searchTerm }) => {
   const [showAllSpecialties, setShowAllSpecialties] = useState(false);
 
-  const matchingSpecialties: Specialties = advocate.specialties.filter((s) =>
-    s.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  const shouldShowOnlyRelevant = searchTerm && !showAllSpecialties && matchingSpecialties.length > 0;
+  // Memoize matching specialties based on search term
+  const matchingSpecialties = useMemo(() => {
+    return advocate.specialties.filter((s) =>
+      s.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm, advocate.specialties]);
+
+  // Determine whether to show only the relevant specialties
+  const shouldShowOnlyRelevant = useMemo(() => {
+    return searchTerm && !showAllSpecialties && matchingSpecialties.length > 0;
+  }, [searchTerm, showAllSpecialties, matchingSpecialties]);
+
+  // Memoize the toggle button function to prevent unnecessary re-renders
+  const toggleSpecialties = useCallback(() => {
+    setShowAllSpecialties((prev) => !prev);
+  }, []);
 
   return (
     <div className={styles.card}>
@@ -38,7 +50,12 @@ const AdvocateCard: React.FC<AdvocateCardProps> = memo(({ advocate, searchTerm }
           {(shouldShowOnlyRelevant ? matchingSpecialties : advocate.specialties).map((s, i) => (
             <div
               key={`${advocate.id}-${s}-${i}`}
-              className={clsx(styles.specialtyBadge, searchTerm && s.toLowerCase().includes(searchTerm.toLowerCase()) ? styles.specialtyMatch : styles.specialtyDefault)}
+              className={clsx(
+                styles.specialtyBadge,
+                searchTerm && s.toLowerCase().includes(searchTerm.toLowerCase())
+                  ? styles.specialtyMatch
+                  : styles.specialtyDefault
+              )}
             >
               {s}
             </div>
@@ -47,7 +64,7 @@ const AdvocateCard: React.FC<AdvocateCardProps> = memo(({ advocate, searchTerm }
 
         {/* Toggle Button for Showing Relevant or All Specialties */}
         {searchTerm && (
-          <button onClick={() => setShowAllSpecialties(!showAllSpecialties)} className={styles.toggleButton}>
+          <button onClick={toggleSpecialties} className={styles.toggleButton}>
             {showAllSpecialties ? "Show Relevant" : "Show All Specialties"}
             {showAllSpecialties ? <ChevronUp className="w-3 h-3 ml-1" /> : <ChevronDown className="w-3 h-3 ml-1" />}
           </button>
@@ -56,13 +73,11 @@ const AdvocateCard: React.FC<AdvocateCardProps> = memo(({ advocate, searchTerm }
 
       {/* Phone & Location Section */}
       <div className={styles.contactSection}>
-        {/* Location */}
         <div className={styles.contactItem}>
           <MapPin className="w-5 h-5 text-gray-500" />
           <span className="truncate max-w-[40%] sm:max-w-none">{advocate.city}</span>
         </div>
 
-        {/* Phone */}
         <a href={`tel:${advocate.phoneNumber}`} className={styles.contactLink}>
           <Phone className="w-5 h-5 text-blue-500" />
           <span className="truncate max-w-[40%] sm:max-w-none">{advocate.phoneNumber}</span>
