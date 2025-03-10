@@ -1,75 +1,63 @@
 "use client";
 
-import { useState, useEffect, useMemo, useTransition, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { X } from "lucide-react";
 import { debounce } from "@/utils/debounce";
 import { Advocate } from "@/types/advocate";
 import AdvocateCard from "./AdvocateCard";
+import useSWRInfinite from "swr/infinite";
 
 type AdvocateGridProps = {
   initialAdvocates: Advocate[];
+  pageSize: number;  
 };
 
-const PAGE_SIZE = 5;
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Failed to load advocates");
+  return res.json();
+};
 
-const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
-  const [filteredAdvocates, setFilteredAdvocates] = useState<Advocate[]>(initialAdvocates);
-  const [visibleAdvocates, setVisibleAdvocates] = useState<Advocate[]>(initialAdvocates.slice(0, PAGE_SIZE));
+const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates, pageSize }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [finalSearchTerm, setFinalSearchTerm] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
-  const [isPending, startTransition] = useTransition();
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  // Render first PAGE_SIZE advocates immediately
-  useEffect(() => {
-    setVisibleAdvocates(initialAdvocates.slice(0, PAGE_SIZE));
-  }, [initialAdvocates]);
+  // SWR Infinite Hook for pagination
+  const { data, size, setSize, isValidating } = useSWRInfinite(
+    (index) =>
+      `/api/advocates?page=${index + 1}&pageSize=${pageSize}&search=${encodeURIComponent(finalSearchTerm)}`,
+    fetcher,
+    { fallbackData: [{ data: initialAdvocates }] }
+  );
 
-  // Debounced search that filters in the background
+  const advocates = data ? data.flatMap((page) => page.data) : [];
+
+  // Debounced Filter function with useMemo
   const debouncedFilter = useMemo(
     () =>
       debounce((searchValue: string) => {
-        const lowerSearch = searchValue.trim().toLowerCase();
-        setIsSearching(!!lowerSearch);
-
-        startTransition(() => {
-          const filtered = initialAdvocates.filter((advocate) => {
-            const fields = [
-              advocate.firstName,
-              advocate.lastName,
-              advocate.city,
-              advocate.degree,
-              ...(advocate.specialties || []),
-              advocate.yearsOfExperience.toString(),
-            ].map((field) => field.toLowerCase());
-
-            return fields.some((field) => field.includes(lowerSearch));
-          });
-
-          setFilteredAdvocates(filtered);
-          setVisibleAdvocates(lowerSearch ? filtered : filtered.slice(0, PAGE_SIZE)); // ✅ Replace visible results once filtering is done
-        });
-      }, 300),
-    [initialAdvocates]
+        const trimmedSearch = searchValue.trim();  
+        if (trimmedSearch === finalSearchTerm) {
+          return; 
+        }
+        setIsSearching(!!trimmedSearch);
+        setFinalSearchTerm(trimmedSearch);
+        setSize(1); 
+      }, 500), 
+    [finalSearchTerm, setSize]
   );
 
-  // Loads more advocates when scrolling
-  const loadMore = useCallback(() => {
-    setVisibleAdvocates((prev) => [
-      ...prev,
-      ...filteredAdvocates.slice(prev.length, prev.length + PAGE_SIZE),
-    ]);
-  }, [filteredAdvocates]);
-
-  // Lazy load more items when scrolling
+  // Lazy loading more items with intersection observer
   useEffect(() => {
     if (!loadMoreRef.current || isSearching) return;
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMore();
+        if (entries[0].isIntersecting && !isValidating) {
+          setSize((prev) => prev + 1); 
         }
       },
       { rootMargin: "100px" }
@@ -78,40 +66,26 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
     observerRef.current.observe(loadMoreRef.current);
 
     return () => observerRef.current?.disconnect();
-  }, [loadMore, isSearching]);
+  }, [setSize, isValidating, isSearching]);
 
-  // Reset search
+  // Handle search term input change
+  const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setSearchTerm(value); 
+    debouncedFilter(value); 
+  }, [debouncedFilter]);
+
+  // Reset search handler
   const handleResetClick = useCallback(() => {
-    setSearchTerm("");
+    setSearchTerm(""); 
+    setFinalSearchTerm(""); 
     setIsSearching(false);
-    setFilteredAdvocates(initialAdvocates);
-    setVisibleAdvocates(initialAdvocates.slice(0, PAGE_SIZE));
-  }, [initialAdvocates]);
-
-  // Handle input changes
-  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(event.target.value);
-  };
-
-  // Escape key clears search
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Escape") {
-        handleResetClick();
-      }
-    },
-    [handleResetClick]
-  );
-
-  useEffect(() => {
-    startTransition(() => {
-      debouncedFilter(searchTerm);
-    });
-  }, [searchTerm, debouncedFilter]);
+    setSize(1); 
+  }, [setSize]);
 
   return (
     <main className={styles.main}>
-      <h1 className={styles.title}>Find Your Advocate</h1>
+      <h2 className={styles.title}>Find Your Advocate</h2>
 
       {/* Search Bar */}
       <div className={styles.searchContainer}>
@@ -119,14 +93,11 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
           type="text"
           value={searchTerm}
           onChange={handleSearchChange}
-          onKeyDown={handleKeyDown}
           placeholder="Search by name, city, specialty, or degree..."
           className={styles.searchInput}
         />
-
-        {/* Reset Button */}
         {searchTerm && (
-          <button onClick={handleResetClick} aria-label="Clear search input" className={styles.resetButton}>
+          <button onClick={handleResetClick} className={styles.resetButton}>
             <X className="w-5 h-5" />
           </button>
         )}
@@ -134,16 +105,16 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates }) => {
 
       {/* Advocate Grid */}
       <div className={styles.grid}>
-        {visibleAdvocates.length > 0 ? (
-          visibleAdvocates.map((advocate) => (
-            <AdvocateCard key={advocate.id} advocate={advocate} searchTerm={searchTerm} />
+        {advocates.length > 0 ? (
+          advocates.map((advocate) => (
+            <AdvocateCard key={advocate.id} advocate={advocate} searchTerm={finalSearchTerm} />
           ))
         ) : (
           <p className={styles.noResults}>No advocates found.</p>
         )}
       </div>
 
-      {/* Load More Trigger (only visible when not searching) */}
+      {/* Load More Trigger */}
       {!isSearching && <div ref={loadMoreRef} className="h-1" />}
     </main>
   );

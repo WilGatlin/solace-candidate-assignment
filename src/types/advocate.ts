@@ -1,12 +1,10 @@
-export type Specialties = string[];
-
 export type Advocate = {
-  id: string;
+  id: number;
   firstName: string;
   lastName: string;
+  city: string;
   degree: string;
   yearsOfExperience: number;
-  specialties: Specialties;
-  city: string;
   phoneNumber: string;
+  specialties: string[]; 
 };
