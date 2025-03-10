@@ -1,7 +1,6 @@
-import { ilike, or, sql } from "drizzle-orm";
+import { ilike, or, sql, } from "drizzle-orm";
 import db from "../../../db";
 import { advocates } from "../../../db/schema";
-import { PgSelectBase } from "drizzle-orm/postgres-js";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -14,7 +13,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    let query = db.select().from(advocates) as PgSelectBase<"advocates", any, any>;
+    let query = db.select().from(advocates);
 
     if (searchTerm) {
       query = db
