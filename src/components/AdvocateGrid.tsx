@@ -8,7 +8,6 @@ import AdvocateCard from "./AdvocateCard";
 import useSWRInfinite from "swr/infinite";
 
 type AdvocateGridProps = {
-  initialAdvocates: Advocate[];
   pageSize: number;  
 };
 
@@ -18,22 +17,25 @@ const fetcher = async (url: string) => {
   return res.json();
 };
 
-const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates, pageSize }) => {
+const AdvocateGrid: React.FC<AdvocateGridProps> = ({ pageSize }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [finalSearchTerm, setFinalSearchTerm] = useState<string>("");
   const [isSearching, setIsSearching] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const isFetchingRef = useRef(false)
 
   // SWR Infinite Hook for pagination
   const { data, size, setSize, isValidating } = useSWRInfinite(
     (index) =>
       `/api/advocates?page=${index + 1}&pageSize=${pageSize}&search=${encodeURIComponent(finalSearchTerm)}`,
     fetcher,
-    { fallbackData: [{ data: initialAdvocates }] }
+    { fallbackData: [{ data: [] }] }
   );
 
   const advocates = data ? data.flatMap((page) => page.data) : [];
+  const lastPage = data?.[data.length - 1]; // no more data if last page has 
+  const hasMore = lastPage && lastPage.data && lastPage.data.length === pageSize;
 
   // Debounced Filter function with useMemo
   const debouncedFilter = useMemo(
@@ -50,23 +52,30 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates, pageSize 
     [finalSearchTerm, setSize]
   );
 
-  // Lazy loading more items with intersection observer
-  useEffect(() => {
-    if (!loadMoreRef.current || isSearching) return;
+   // Reset fetching state when new data loads
+   useEffect(() => {
+    isFetchingRef.current = false;
+  }, [data]);
 
-    observerRef.current = new IntersectionObserver(
+  // Lazy loading with observer and hasMore safeguard
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || isSearching || !hasMore) return;
+
+    const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isValidating) {
-          setSize((prev) => prev + 1); 
+        const entry = entries[0];
+        if (entry.isIntersecting && !isValidating && !isFetchingRef.current) {
+          isFetchingRef.current = true;
+          setSize((prev) => prev + 1);
         }
       },
-      { rootMargin: "100px" }
+      { rootMargin: "200px", threshold: 0.1 }
     );
 
-    observerRef.current.observe(loadMoreRef.current);
-
-    return () => observerRef.current?.disconnect();
-  }, [setSize, isValidating, isSearching]);
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [isSearching, isValidating, hasMore, setSize]);
 
   // Handle search term input change
   const handleSearchChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,18 +113,21 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ initialAdvocates, pageSize 
       </div>
 
       {/* Advocate Grid */}
-      <div className={styles.grid}>
-        {advocates.length > 0 ? (
-          advocates.map((advocate) => (
-            <AdvocateCard key={advocate.id} advocate={advocate} searchTerm={finalSearchTerm} />
-          ))
-        ) : (
-          <p className={styles.noResults}>No advocates found.</p>
-        )}
-      </div>
+      {data?.length === 0 ? 
+        <div>Loading...</div> :
+        <div className={styles.grid}>
+          {advocates.length > 0 ? (
+            advocates.map((advocate) => (
+              <AdvocateCard key={advocate.id} advocate={advocate} searchTerm={finalSearchTerm} />
+            ))
+          ) : (
+            <p className={styles.noResults}>No advocates found.</p>
+          )}
+        </div>
+      }
 
       {/* Load More Trigger */}
-      {!isSearching && <div ref={loadMoreRef} className="h-1" />}
+      {!isSearching && hasMore && (<div ref={loadMoreRef} className="h-16 w-full bg-transparent" aria-hidden="true" />)}
     </main>
   );
 };
