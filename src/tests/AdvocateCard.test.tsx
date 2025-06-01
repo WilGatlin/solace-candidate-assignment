@@ -37,4 +37,29 @@ describe("AdvocateCard", () => {
     expect(screen.getByText("Nutrition")).toBeInTheDocument();
     expect(screen.getByText("Show Relevant")).toBeInTheDocument();
   });
+
+  it("matches specialties with normalized search (e.g., 'mens' matches 'men's')", () => {
+    const customAdvocate = {
+      ...advocate,
+      specialties: ["Men's Health", "Nutrition"]
+    };
+    render(<AdvocateCard advocate={customAdvocate} searchTerm="mens" />);
+    // Should show "Men's Health" as a gold badge
+    const badge = screen.getByText("Men's Health");
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveClass("bg-yellow-200"); // specialtyMatch
+    // Should not show Nutrition
+    expect(screen.queryByText("Nutrition")).not.toBeInTheDocument();
+  });
+
+  it("renders empty specialties gracefully", () => {
+    const customAdvocate = {
+      ...advocate,
+      specialties: []
+    };
+    render(<AdvocateCard advocate={customAdvocate} searchTerm="" />);
+    expect(screen.getByText("Specialties:")).toBeInTheDocument();
+    // Should not render any badges
+    expect(screen.queryByRole("listitem")).not.toBeInTheDocument();
+  });
 });

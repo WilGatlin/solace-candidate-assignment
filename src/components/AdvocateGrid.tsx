@@ -25,12 +25,20 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ pageSize }) => {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const isFetchingRef = useRef(false)
 
+  console.log("advocategrid")
+
   // SWR Infinite Hook for pagination
   const { data, size, setSize, isValidating } = useSWRInfinite(
     (index) =>
       `/api/advocates?page=${index + 1}&pageSize=${pageSize}&search=${encodeURIComponent(finalSearchTerm)}`,
     fetcher,
-    { fallbackData: [{ data: [] }] }
+    {
+      fallbackData: [{ data: [] }],
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 2000, // reduce repeated fetches for the same page
+      revalidateFirstPage: false // don't refetch page=1 on scroll
+    }
   );
 
   const advocates = data ? data.flatMap((page) => page.data) : [];
