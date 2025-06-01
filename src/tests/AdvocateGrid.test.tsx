@@ -8,7 +8,7 @@ import useSWRInfinite from "swr/infinite";
 // ✅ Mock the SWR infinite hook
 jest.mock("swr/infinite", () => ({
   __esModule: true,
-  useSWRInfinite: jest.fn(),
+  default: jest.fn(),
 }));
 
 const mockSetSize = jest.fn();
@@ -41,13 +41,13 @@ describe("AdvocateGrid", () => {
   });
 
   it("renders the grid and search bar", () => {
-    render(<AdvocateGrid initialAdvocates={mockAdvocates} pageSize={10} />);
+    render(<AdvocateGrid pageSize={10} />);
     expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
     expect(screen.getByText(/John Doe/i)).toBeInTheDocument();
   });
 
   it("clears search input when reset clicked", async () => {
-    render(<AdvocateGrid initialAdvocates={mockAdvocates} pageSize={10} />);
+    render(<AdvocateGrid pageSize={10} />);
     const input = screen.getByPlaceholderText(/search/i);
     fireEvent.change(input, { target: { value: "adhd" } });
     expect(input).toHaveValue("adhd");
