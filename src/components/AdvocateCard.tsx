@@ -13,11 +13,44 @@ const AdvocateCard: React.FC<AdvocateCardProps> = memo(({ advocate, searchTerm }
   const [showAllSpecialties, setShowAllSpecialties] = useState(false);
 
   // Memoize matching specialties based on search term
-  const matchingSpecialties = useMemo(() => {
-    return advocate.specialties.filter((s) =>
-      s.toLowerCase().includes(searchTerm.toLowerCase())
+  function normalize(str: string) {
+    return str.replace(/'/g, '').toLowerCase();
+  }
+
+  // Helper to highlight the matching substring in the original specialty
+  function highlightMatch(spec: string, searchTerm: string) {
+    if (!searchTerm) return spec;
+    const normSpec = normalize(spec);
+    const normSearch = normalize(searchTerm);
+    const matchIdx = normSpec.indexOf(normSearch);
+    if (matchIdx === -1) return spec;
+    // Map the matchIdx in normSpec back to the original spec
+    let realIdx = 0, normCount = 0;
+    while (realIdx < spec.length && normCount < matchIdx) {
+      if (spec[realIdx] !== "'") normCount++;
+      realIdx++;
+    }
+    // Now, find the end index in the original string
+    let highlightLen = 0, normHighlightCount = 0;
+    while (realIdx + highlightLen < spec.length && normHighlightCount < normSearch.length) {
+      if (spec[realIdx + highlightLen] !== "'") normHighlightCount++;
+      highlightLen++;
+    }
+    return (
+      <>
+        {spec.slice(0, realIdx)}
+        <span style={{ background: 'yellow' }}>{spec.slice(realIdx, realIdx + highlightLen)}</span>
+        {spec.slice(realIdx + highlightLen)}
+      </>
     );
-  }, [searchTerm, advocate.specialties]);
+  }
+
+  const matchingSpecialties = useMemo(() => {
+    if (!searchTerm) return advocate.specialties;
+    return advocate.specialties.filter((spec) =>
+      normalize(spec).includes(normalize(searchTerm))
+    );
+  }, [advocate.specialties, searchTerm]);
 
   // Determine whether to show only the relevant specialties
   const shouldShowOnlyRelevant = useMemo(() => {
@@ -47,19 +80,20 @@ const AdvocateCard: React.FC<AdvocateCardProps> = memo(({ advocate, searchTerm }
       <div className={styles.specialtiesContainer}>
         <h3 className="text-xs font-medium text-gray-700 mb-1">Specialties:</h3>
         <div className="flex flex-wrap gap-1">
-          {(shouldShowOnlyRelevant ? matchingSpecialties : advocate.specialties).map((s, i) => (
-            <div
-              key={`${advocate.id}-${s}-${i}`}
-              className={clsx(
-                styles.specialtyBadge,
-                searchTerm && s.toLowerCase().includes(searchTerm.toLowerCase())
-                  ? styles.specialtyMatch
-                  : styles.specialtyDefault
-              )}
-            >
-              {s}
-            </div>
-          ))}
+          {(shouldShowOnlyRelevant ? matchingSpecialties : advocate.specialties).map((s, i) => {
+            const isMatch = searchTerm && normalize(s).includes(normalize(searchTerm));
+            return (
+              <div
+                key={`${advocate.id}-${s}-${i}`}
+                className={clsx(
+                  styles.specialtyBadge,
+                  isMatch ? styles.specialtyMatch : styles.specialtyDefault
+                )}
+              >
+                {s}
+              </div>
+            );
+          })}
         </div>
 
         {/* Toggle Button for Showing Relevant or All Specialties */}

@@ -24,10 +24,11 @@ export async function GET(req: Request) {
               ilike(advocates.lastName, `%${searchTerm}%`),
               ilike(advocates.city, `%${searchTerm}%`),
               ilike(advocates.degree, `%${searchTerm}%`),
+              sql`(${advocates.firstName} || ' ' || ${advocates.lastName}) ILIKE ${`%${searchTerm}%`}`,
               sql`EXISTS (
                     SELECT 1 
                     FROM jsonb_array_elements_text(${advocates.specialties}) AS tag 
-                    WHERE tag ILIKE ${`%${searchTerm}%`}
+                    WHERE replace(tag, '''', '') ILIKE ${`%${searchTerm.replace(/'/g, '')}%`}
                   )`
             )
           )
