@@ -17,34 +17,6 @@ const AdvocateCard: React.FC<AdvocateCardProps> = memo(({ advocate, searchTerm }
     return str.replace(/'/g, '').toLowerCase();
   }
 
-  // Helper to highlight the matching substring in the original specialty
-  function highlightMatch(spec: string, searchTerm: string) {
-    if (!searchTerm) return spec;
-    const normSpec = normalize(spec);
-    const normSearch = normalize(searchTerm);
-    const matchIdx = normSpec.indexOf(normSearch);
-    if (matchIdx === -1) return spec;
-    // Map the matchIdx in normSpec back to the original spec
-    let realIdx = 0, normCount = 0;
-    while (realIdx < spec.length && normCount < matchIdx) {
-      if (spec[realIdx] !== "'") normCount++;
-      realIdx++;
-    }
-    // Now, find the end index in the original string
-    let highlightLen = 0, normHighlightCount = 0;
-    while (realIdx + highlightLen < spec.length && normHighlightCount < normSearch.length) {
-      if (spec[realIdx + highlightLen] !== "'") normHighlightCount++;
-      highlightLen++;
-    }
-    return (
-      <>
-        {spec.slice(0, realIdx)}
-        <span style={{ background: 'yellow' }}>{spec.slice(realIdx, realIdx + highlightLen)}</span>
-        {spec.slice(realIdx + highlightLen)}
-      </>
-    );
-  }
-
   const matchingSpecialties = useMemo(() => {
     if (!searchTerm) return advocate.specialties;
     return advocate.specialties.filter((spec) =>

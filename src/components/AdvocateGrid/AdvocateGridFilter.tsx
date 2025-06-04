@@ -18,7 +18,6 @@ interface AdvocateGridFilterProps {
   onFilteredAdvocatesUpdate: (filteredAdvocates: Advocate[]) => void;
 }
 
-
 const AdvocateGridFilter: React.FC<AdvocateGridFilterProps> = ({
   allAdvocates,
   onFilteredAdvocatesUpdate,

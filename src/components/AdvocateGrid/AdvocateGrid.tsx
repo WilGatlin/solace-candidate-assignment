@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { X } from "lucide-react";
-import { debounce } from "@/utils/debounce";
+
 import AdvocateGridFilter from "@/components/AdvocateGrid/AdvocateGridFilter";
 import AdvocateGridSearch from "@/components/AdvocateGrid/AdvocateGridSearch";
 import { Advocate } from "@/types/advocate";
@@ -120,7 +119,6 @@ const AdvocateGrid: React.FC<AdvocateGridProps> = ({ pageSize }) => {
       />
 
       {/* Advocate Grid */}
-      {/* Show loading only if initial data hasn't loaded and not just SWR validating in background */}
       {(data?.length === 1 && data[0].data.length === 0 && isValidating && !advocates.length) ? 
         <div>Loading...</div> :
         <div className={styles.grid}>
