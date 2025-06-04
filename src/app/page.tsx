@@ -1,4 +1,4 @@
-import AdvocateGrid from "@/components/AdvocateGrid";
+import AdvocateGrid from "@/components/AdvocateGrid/AdvocateGrid";
 
 const PAGE_SIZE = 5
 

@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import AdvocateGrid from "@/components/AdvocateGrid";
+import AdvocateGrid from "@/components/AdvocateGrid/AdvocateGrid";
 import { Advocate } from "@/types/advocate";
 import useSWRInfinite from "swr/infinite";
 
