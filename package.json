@@ -9,7 +9,9 @@
     "lint": "next lint",
     "generate": "drizzle-kit generate",
     "migrate:up": "node ./src/db/migrate.js",
-    "seed": "node --loader esbuild-register/loader -r esbuild-register ./src/db/seed/index.ts"
+    "seed": "node --loader esbuild-register/loader -r esbuild-register ./src/db/seed/index.ts",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "clsx": "^2.1.1",
@@ -22,14 +24,28 @@
     "swr": "^2.3.3"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^29.5.14",
     "@types/node": "^20.14.12",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "drizzle-kit": "^0.23.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.5",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "msw": "^1.0.0",
     "postcss": "^8.4.40",
-    "tailwindcss": "^3.4.7",
-    "typescript": "^5.5.4"
-  }
+    "swr": "^2.3.3",
+    "tailwindcss": "^3.4.7"
+  },
+  "jest": {
+    "setupFilesAfterEnv": ["<rootDir>/jest.setup.ts"]
+  },
+  "ts-jest": "^29.3.4",
+  "ts-node": "^10.9.2",
+  "typescript": "^5.5.4"
 }
+
